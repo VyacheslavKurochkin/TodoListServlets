@@ -20,7 +20,15 @@ public class TodoItemsInMemoryRepository implements TodoItemRepository {
     @Override
     public void update(TodoItem item) {
         synchronized (todoItems) {
-            TodoItem repositoryItem = getItem(item.getId());
+            TodoItem repositoryItem = todoItems
+                    .stream()
+                    .filter(it -> it.getId() == item.getId())
+                    .findFirst()
+                    .orElse(null);
+
+            if (repositoryItem == null) {
+                throw new NoSuchElementException("Запись не найдена по id = " + item.getId());
+            }
 
             repositoryItem.setText(item.getText());
         }
@@ -35,34 +43,12 @@ public class TodoItemsInMemoryRepository implements TodoItemRepository {
         }
     }
 
-    private TodoItem getItem(int id) {
-        TodoItem repositoryItem = todoItems
-                .stream()
-                .filter(it -> it.getId() == id)
-                .findFirst()
-                .orElse(null);
-
-        if (repositoryItem == null) {
-            throw new NoSuchElementException("Запись не найдена по id = " + id);
-        }
-
-        return repositoryItem;
-    }
-
     public List<TodoItem> getAll() {
         synchronized (todoItems) {
             return todoItems
                     .stream()
                     .map(TodoItem::new)
                     .toList();
-        }
-    }
-
-    public void setEditing(int id, boolean editing) {
-        synchronized (todoItems) {
-            //TodoItem repositoryItem =
-            getItem(id).setEditing(editing);
-            //repositoryItem.setEditing(editing);
         }
     }
 }

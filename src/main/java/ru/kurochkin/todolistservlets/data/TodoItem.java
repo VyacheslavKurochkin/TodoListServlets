@@ -35,12 +35,4 @@ public class TodoItem {
     public void setText(String text) {
         this.text = text;
     }
-
-    public boolean isEditing() {
-        return isEditing;
-    }
-
-    public void setEditing(boolean editing) {
-        this.isEditing = editing;
-    }
 }

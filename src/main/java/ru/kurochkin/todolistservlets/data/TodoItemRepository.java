@@ -10,6 +10,4 @@ public interface TodoItemRepository {
     void update(TodoItem item);
 
     void delete(int id);
-
-    void setEditing(int id, boolean editing);
 }
