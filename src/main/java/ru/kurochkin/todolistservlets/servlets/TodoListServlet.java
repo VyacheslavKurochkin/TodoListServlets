@@ -33,7 +33,6 @@ public class TodoListServlet extends HttpServlet {
         String actionErrorMessageHtml = "";
         String createErrorMessageHtml = "";
         String itemErrorMessageHtml = "";
-        String editingItemText = "";
         int editingItemId = -1;
 
         if (session != null) {
@@ -55,10 +54,8 @@ public class TodoListServlet extends HttpServlet {
 
             if (sessionEditingItemId != null) {
                 editingItemId = sessionEditingItemId;
-                editingItemText = (String) session.getAttribute("editingItemText");
 
                 session.removeAttribute("editingItemId");
-                session.removeAttribute("editingItemText");
             }
 
             String editingItemErrorText = (String) session.getAttribute("editingItemErrorText");
@@ -79,6 +76,8 @@ public class TodoListServlet extends HttpServlet {
             int itemId = todoItem.getId();
 
             if (itemId == editingItemId) {
+                String itemText = itemErrorMessageHtml.isEmpty() ? todoItem.getText() : "";
+
                 todoListHtml
                         .append("""
                                 <li>
@@ -90,10 +89,10 @@ public class TodoListServlet extends HttpServlet {
                                         %s
                                     </form>
                                 </li>
-                                """.formatted(baseUrl
-                                , StringEscapeUtils.escapeHtml4(editingItemText)
-                                , itemId
-                                , itemErrorMessageHtml))
+                                """.formatted(baseUrl,
+                                StringEscapeUtils.escapeHtml4(itemText),
+                                itemId,
+                                itemErrorMessageHtml))
                         .append(System.lineSeparator());
             } else {
                 todoListHtml
@@ -104,13 +103,11 @@ public class TodoListServlet extends HttpServlet {
                                         <button name="action" value="delete" type="submit">Удалить</button>
                                         <button name="action" value="edit" type="submit">Редактировать</button>
                                         <input type="hidden" name="id" value="%s">
-                                        <input type="hidden" name="text" value="%s">
                                     </form>
                                 </li>
-                                """.formatted(baseUrl
-                                , StringEscapeUtils.escapeHtml4(todoItem.getText())
-                                , todoItem.getId()
-                                , StringEscapeUtils.escapeHtml4(todoItem.getText())))
+                                """.formatted(baseUrl,
+                                StringEscapeUtils.escapeHtml4(todoItem.getText()),
+                                todoItem.getId()))
                         .append(System.lineSeparator());
             }
         }
@@ -144,68 +141,64 @@ public class TodoListServlet extends HttpServlet {
 
         switch (action) {
             case "create" -> {
-                String text = req.getParameter("text").trim();
+                String text = req.getParameter("text");
+                HttpSession session = req.getSession();
 
-                if (text.isEmpty()) {
-                    HttpSession session = req.getSession();
-
-                    session.setAttribute("createErrorText", "Необходимо указать текст");
+                if (text == null) {
+                    session.setAttribute("actionErrorText", "Ошибка при добавлении новой записи: не передан обязательный параметр id записи");
                 } else {
-                    TodoItemRepository todoItemRepository = new TodoItemsInMemoryRepository();
-                    todoItemRepository.create(new TodoItem(text));
+                    text = text.trim();
+
+                    if (text.isEmpty()) {
+                        session.setAttribute("createErrorText", "Необходимо указать текст");
+                    } else {
+                        TodoItemRepository todoItemRepository = new TodoItemsInMemoryRepository();
+                        todoItemRepository.create(new TodoItem(text));
+                    }
                 }
             }
             case "edit" -> {
-                String parameterItemId = req.getParameter("id");
+                String idString = req.getParameter("id");
                 HttpSession session = req.getSession();
 
-                if (parameterItemId == null) {
+                if (idString == null) {
                     session.setAttribute("actionErrorText", "Ошибка при редактировании записи: не передан обязательный параметр id записи");
                 } else {
                     try {
-                        int id = Integer.parseInt(req.getParameter("id"));
+                        int id = Integer.parseInt(idString);
                         session.setAttribute("editingItemId", id);
-
-                        String text = req.getParameter("text");
-
-                        if (text != null) {
-                            session.setAttribute("editingItemText", text);
-                        }
                     } catch (NumberFormatException e) {
                         session.setAttribute("actionErrorText", "Ошибка при редактировании записи: не распознан параметр id записи");
                     }
                 }
             }
             case "cancel" -> {
-                String parameterItemId = req.getParameter("id");
+                String idString = req.getParameter("id");
                 HttpSession session = req.getSession();
 
-                if (parameterItemId == null) {
+                if (idString == null) {
                     session.setAttribute("actionErrorText", "Ошибка при отмене редактирования: не передан обязательный параметр id записи");
                 } else {
                     session.removeAttribute("editingItemId");
-                    session.removeAttribute("editingItemText");
                 }
             }
             case "save" -> {
                 String text = req.getParameter("text");
-                String parameterItemId = req.getParameter("id");
+                String idString = req.getParameter("id");
                 HttpSession session = req.getSession();
 
                 if (text == null) {
                     session.setAttribute("actionErrorText", "Ошибка при сохранении записи: не передан обязательный параметр text записи");
-                } else if (parameterItemId == null) {
+                } else if (idString == null) {
                     session.setAttribute("actionErrorText", "Ошибка при сохранении записи: не передан обязательный параметр id записи");
                 } else {
                     try {
-                        int id = Integer.parseInt(parameterItemId);
-
+                        int id = Integer.parseInt(idString);
                         text = text.trim();
 
                         if (text.isEmpty()) {
                             session.setAttribute("editingItemErrorText", "Необходимо указать текст");
                             session.setAttribute("editingItemId", id);
-                            session.setAttribute("editingItemText", text);
                         } else {
                             TodoItemRepository todoItemRepository = new TodoItemsInMemoryRepository();
                             todoItemRepository.update(new TodoItem(id, text));
@@ -219,14 +212,14 @@ public class TodoListServlet extends HttpServlet {
                 }
             }
             case "delete" -> {
-                String parameterItemId = req.getParameter("id");
+                String idString = req.getParameter("id");
 
-                if (parameterItemId == null) {
+                if (idString == null) {
                     HttpSession session = req.getSession();
                     session.setAttribute("actionErrorText", "Ошибка при удалении записи: не передан обязательный параметр id записи");
                 } else {
                     try {
-                        int id = Integer.parseInt(parameterItemId);
+                        int id = Integer.parseInt(idString);
 
                         TodoItemRepository todoItemRepository = new TodoItemsInMemoryRepository();
                         todoItemRepository.delete(id);
