@@ -173,14 +173,9 @@ public class TodoListServlet extends HttpServlet {
                 }
             }
             case "cancel" -> {
-                String idString = req.getParameter("id");
                 HttpSession session = req.getSession();
 
-                if (idString == null) {
-                    session.setAttribute("actionErrorText", "Ошибка при отмене редактирования: не передан обязательный параметр id записи");
-                } else {
-                    session.removeAttribute("editingItemId");
-                }
+                session.removeAttribute("editingItemId");
             }
             case "save" -> {
                 String text = req.getParameter("text");
